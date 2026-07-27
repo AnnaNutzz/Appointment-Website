@@ -1,0 +1,11 @@
+# ── Dependencies & OS files ──
+node_modules/
+.DS_Store
+Thumbs.db
+
+# ══════════════════════════════════════════════════════
+#  🔒 PRIVATE CONFIG — Never commit this!
+#  Your real config with email, dates, personal info.
+#  Copy config.example.js → config.js and fill it in.
+# ══════════════════════════════════════════════════════
+js/config.js

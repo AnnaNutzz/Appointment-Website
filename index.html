@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Book an appointment — view my calendar, pick a date, and let's meet up!">
+  <title>Book an Appointment</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body>
+  <!-- Animated background blobs -->
+  <div class="bg-decoration">
+    <div class="bg-blob"></div>
+    <div class="bg-blob"></div>
+    <div class="bg-blob"></div>
+  </div>
+
+  <!-- Toast notification container -->
+  <div id="toast-container"></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       HEADER
+       ═══════════════════════════════════════════════════════ -->
+  <header class="header">
+    <div class="header-content">
+      <div class="header-info">
+        <h1>📅 <span id="owner-name">Loading...</span></h1>
+        <p class="tagline" id="owner-tagline"></p>
+      </div>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode" aria-label="Toggle theme">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB NAVIGATION
+       ═══════════════════════════════════════════════════════ -->
+  <nav class="tab-nav" aria-label="Main navigation">
+    <div class="tab-nav-inner">
+      <button class="tab-btn active" data-tab="calendar" id="tab-calendar">
+        <span class="tab-emoji">📅</span>Calendar
+      </button>
+      <button class="tab-btn" data-tab="appointment" id="tab-appointment">
+        <span class="tab-emoji">📝</span>Book Appointment
+      </button>
+      <button class="tab-btn" data-tab="chat" id="tab-chat">
+        <span class="tab-emoji">💬</span>Chat
+      </button>
+      <button class="tab-btn" data-tab="notices" id="tab-notices">
+        <span class="tab-emoji">📌</span>Notice Board
+      </button>
+      <button class="tab-btn" data-tab="places" id="tab-places">
+        <span class="tab-emoji">🍽️</span>Favorite Places
+      </button>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN CONTENT
+       ═══════════════════════════════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- ── Calendar Tab ─────────────────────────────────── -->
+    <section class="tab-panel active" id="panel-calendar">
+      <h2 class="section-title">📅 My Calendar</h2>
+      <p class="section-subtitle">Click on any day to see details. Green days are weekends — I'm free! Check the legend below for color meanings.</p>
+
+      <!-- Google Calendar embed toggle -->
+      <div class="gcal-toggle" id="gcal-toggle" style="display:none;">
+        <button class="gcal-toggle-btn" id="gcal-toggle-btn">📆 Show Google Calendar</button>
+      </div>
+      <div class="gcal-frame" id="gcal-frame">
+        <iframe id="gcal-iframe" title="Google Calendar"></iframe>
+      </div>
+
+      <!-- Availability Meter -->
+      <div class="availability-meter">
+        <div class="availability-label">
+          <span>Availability this month</span>
+          <span id="availability-percent">0%</span>
+        </div>
+        <div class="availability-bar">
+          <div class="availability-fill" id="availability-fill" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Calendar navigation -->
+      <div class="calendar-header">
+        <div class="calendar-nav">
+          <button id="cal-prev" aria-label="Previous month">‹</button>
+          <span class="calendar-month-label" id="cal-month-label">July 2026</span>
+          <button id="cal-next" aria-label="Next month">›</button>
+        </div>
+        <button class="today-btn" id="cal-today">Today</button>
+      </div>
+
+      <!-- Calendar grid -->
+      <div class="calendar-grid" id="calendar-grid">
+        <!-- Day labels -->
+        <div class="calendar-day-label">Sun</div>
+        <div class="calendar-day-label">Mon</div>
+        <div class="calendar-day-label">Tue</div>
+        <div class="calendar-day-label">Wed</div>
+        <div class="calendar-day-label">Thu</div>
+        <div class="calendar-day-label">Fri</div>
+        <div class="calendar-day-label">Sat</div>
+        <!-- Days will be rendered by JS -->
+      </div>
+
+      <!-- Legend -->
+      <div class="calendar-legend" id="calendar-legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--cal-free)"></div>Free (Weekend)</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--cal-available)"></div>Available</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--cal-taken)"></div>Taken</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--cal-maybe)"></div>Maybe (Emergency)</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--cal-blocked)"></div>Blocked</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--cal-important)"></div>Important</div>
+        <div class="legend-item"><div class="legend-swatch" style="border:2px solid var(--mauve);background:transparent"></div>Today</div>
+      </div>
+    </section>
+
+    <!-- ── Book Appointment Tab ─────────────────────────── -->
+    <section class="tab-panel" id="panel-appointment">
+      <h2 class="section-title">📝 Book an Appointment</h2>
+      <p class="section-subtitle">Fill in the details below. I'll get a notification and confirm via email. No account needed!</p>
+
+      <!-- Cooldown display -->
+      <div class="cooldown-display" id="cooldown-display">
+        <div class="cooldown-time" id="cooldown-time">0:00</div>
+        <div class="cooldown-text">Please wait before submitting another appointment</div>
+      </div>
+
+      <form id="appointment-form" autocomplete="off">
+        <!-- Name -->
+        <div class="form-group">
+          <label class="form-label" for="appt-name">Your Name <span class="required">*</span></label>
+          <input class="form-input" type="text" id="appt-name" placeholder="e.g. Alex Johnson" required>
+        </div>
+
+        <!-- Date & Time -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="appt-date">Date <span class="required">*</span></label>
+            <input class="form-input" type="date" id="appt-date" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="appt-time">Time <span class="required">*</span></label>
+            <input class="form-input" type="time" id="appt-time" required>
+          </div>
+        </div>
+
+        <!-- Date warning -->
+        <div class="date-warning" id="date-warning"></div>
+
+        <!-- Location -->
+        <div class="form-group">
+          <label class="form-label" for="appt-location">Location Name <span class="required">*</span></label>
+          <input class="form-input" type="text" id="appt-location" placeholder="e.g. The Study Cafe" required>
+          <button type="button" class="link-toggle-btn" id="link-toggle">+ Add a link</button>
+          <div class="link-input-wrapper" id="link-wrapper">
+            <input class="form-input" type="url" id="appt-location-link" placeholder="https://maps.google.com/...">
+          </div>
+        </div>
+
+        <!-- What's good about this place -->
+        <div class="form-group">
+          <label class="form-label" for="appt-good-about">What's good about this place? <span class="required">*</span></label>
+          <textarea class="form-textarea" id="appt-good-about" placeholder="Tell me why you picked this spot! e.g. Great ambiance, amazing pasta..." required></textarea>
+          <p class="form-hint">This helps me get excited about the meetup! 😊</p>
+        </div>
+
+        <!-- Tags -->
+        <div class="form-group">
+          <label class="form-label">What's the plan? <span class="required">*</span></label>
+          <div class="tag-grid" id="tag-grid">
+            <!-- Tags rendered by JS -->
+          </div>
+          <input type="hidden" id="appt-tag" required>
+          <div class="tag-caption" id="tag-caption"></div>
+        </div>
+
+        <!-- Form actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="appt-submit">
+            ✨ Request Appointment
+          </button>
+          <button type="button" class="btn btn-danger" id="appt-cancel">
+            ✕ Cancel
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── Chat Tab ─────────────────────────────────────── -->
+    <section class="tab-panel" id="panel-chat">
+      <h2 class="section-title">💬 Message Board</h2>
+      <p class="section-subtitle">Leave me a message! I'll get an email notification and respond here or via email.</p>
+
+      <div class="chat-container" id="chat-container">
+        <div class="chat-messages" id="chat-messages">
+          <!-- Messages rendered by JS -->
+        </div>
+      </div>
+
+      <div class="chat-name-input">
+        <input class="form-input" type="text" id="chat-name" placeholder="Your name...">
+      </div>
+      <div class="chat-form" id="chat-form">
+        <input class="form-input" type="text" id="chat-input" placeholder="Type your message...">
+        <button class="chat-send-btn" id="chat-send" aria-label="Send message">📤</button>
+      </div>
+    </section>
+
+    <!-- ── Notice Board Tab ─────────────────────────────── -->
+    <section class="tab-panel" id="panel-notices">
+      <h2 class="section-title">📌 Notice Board</h2>
+      <p class="section-subtitle">Important dates, announcements, and updates from me.</p>
+
+      <div class="notice-grid" id="notice-grid">
+        <!-- Notices rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ── Favorite Places Tab ──────────────────────────── -->
+    <section class="tab-panel" id="panel-places">
+      <h2 class="section-title">🍽️ My Favorite Places</h2>
+      <p class="section-subtitle">Here are some places I love. Feel free to suggest one of these when booking!</p>
+
+      <div class="places-grid" id="places-grid">
+        <!-- Places rendered by JS -->
+      </div>
+    </section>
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════
+       DAY DETAIL POPUP
+       ═══════════════════════════════════════════════════════ -->
+  <div class="day-popup" id="day-popup">
+    <div class="day-popup-content">
+      <div class="day-popup-header">
+        <h3 id="day-popup-title">Day Details</h3>
+        <button class="day-popup-close" id="day-popup-close" aria-label="Close">×</button>
+      </div>
+      <div class="day-popup-status" id="day-popup-status"></div>
+      <p class="day-popup-reason" id="day-popup-reason"></p>
+      <button class="day-popup-book-btn" id="day-popup-book">📝 Book this day</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       CAPTCHA MODAL
+       ═══════════════════════════════════════════════════════ -->
+  <div class="captcha-overlay" id="captcha-overlay">
+    <div class="captcha-modal" id="captcha-modal">
+      <div class="captcha-emoji" id="captcha-emoji">🧩</div>
+      <h3 class="captcha-title" id="captcha-title">Quick Check!</h3>
+      <p class="captcha-subtitle" id="captcha-subtitle">Prove you're human with this fun puzzle</p>
+      <div class="captcha-question" id="captcha-question"></div>
+      <div class="captcha-options" id="captcha-options">
+        <!-- Options rendered by JS -->
+      </div>
+      <!-- Hard captcha phrase input (hidden by default) -->
+      <input class="captcha-phrase-input" type="text" id="captcha-phrase-input" placeholder="Type the phrase above..." style="display:none;">
+      <button class="btn btn-primary" id="captcha-phrase-submit" style="display:none;width:100%;justify-content:center;">Submit</button>
+      <p class="captcha-timer" id="captcha-timer"></p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       ICS INSTRUCTIONS MODAL
+       ═══════════════════════════════════════════════════════ -->
+  <div class="ics-modal" id="ics-modal">
+    <div class="ics-modal-content">
+      <div class="ics-success-icon">🎉</div>
+      <h3 class="section-title" style="justify-content:center;">Appointment Requested!</h3>
+      <p class="section-subtitle" style="text-align:center;">A <strong>.ics calendar file</strong> has been downloaded. Here's how to add it to your calendar:</p>
+
+      <div class="ics-platform-tabs">
+        <button class="ics-platform-tab active" data-platform="google">📱 Google</button>
+        <button class="ics-platform-tab" data-platform="apple">🍎 Apple</button>
+        <button class="ics-platform-tab" data-platform="outlook">📧 Outlook</button>
+      </div>
+
+      <div class="ics-platform-content active" data-platform="google">
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">1</div>
+          <div class="ics-step-text">Open <strong>Google Calendar</strong> on your computer (calendar.google.com)</div>
+        </div>
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">2</div>
+          <div class="ics-step-text">Click the <strong>⚙️ Settings</strong> gear icon at the top right</div>
+        </div>
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">3</div>
+          <div class="ics-step-text">Go to <strong>Import & Export</strong> on the left sidebar</div>
+        </div>
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">4</div>
+          <div class="ics-step-text">Click <strong>"Select file from your computer"</strong> and choose the downloaded <code>.ics</code> file</div>
+        </div>
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">5</div>
+          <div class="ics-step-text">Click <strong>Import</strong> — done! The event will appear on your calendar 🎉</div>
+        </div>
+      </div>
+
+      <div class="ics-platform-content" data-platform="apple">
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">1</div>
+          <div class="ics-step-text">Find the downloaded <code>.ics</code> file in your Downloads folder</div>
+        </div>
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">2</div>
+          <div class="ics-step-text"><strong>Double-click</strong> the file — Apple Calendar will open automatically</div>
+        </div>
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">3</div>
+          <div class="ics-step-text">Click <strong>"Add"</strong> when prompted — that's it! 🎉</div>
+        </div>
+      </div>
+
+      <div class="ics-platform-content" data-platform="outlook">
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">1</div>
+          <div class="ics-step-text">Find the downloaded <code>.ics</code> file in your Downloads folder</div>
+        </div>
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">2</div>
+          <div class="ics-step-text"><strong>Double-click</strong> the file — Outlook will open it</div>
+        </div>
+        <div class="ics-instruction-step">
+          <div class="ics-step-number">3</div>
+          <div class="ics-step-text">Click <strong>"Save & Close"</strong> — the event is now in your Outlook calendar 🎉</div>
+        </div>
+      </div>
+
+      <div class="form-actions" style="justify-content:center;margin-top:24px;">
+        <button class="btn btn-primary" id="ics-modal-close">Got it! 👍</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SCRIPTS (order matters)
+       ═══════════════════════════════════════════════════════ -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/captcha.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/appointments.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/noticeboard.js"></script>
+  <script src="js/places.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
